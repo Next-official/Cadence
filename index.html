@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Cadence</title>
+  <link rel="manifest" href="manifest.json">
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Collegamento al file CSS esterno -->
+  <link rel="stylesheet" href="style.css">
+  
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="theme-indigo">
+
+<div class="app-container">
+  <header>
+    <h1>Cadence</h1>
+    <div class="balance" id="totalMonthly">0,00 € /mese</div>
+    <div class="sub-balance" id="totalYearly">Spesa annua stimata: 0,00 €</div>
+  </header>
+
+  <div class="content-area">
+    
+    <!-- SEZIONE 1: CALENDARIO PIXEL -->
+    <section id="sec-calendar" class="section-view active">
+      <div class="card">
+        <div class="card-title">📅 Calendario Scadenze</div>
+        <p style="font-size:0.82rem; color:var(--subtext); margin-top:4px;">Tocca una casella per vederne i dettagli dell'abbonamento.</p>
+        <div class="calendar-grid" id="calendarGridContainer"></div>
+      </div>
+    </section>
+
+    <!-- SEZIONE 2: ABBONAMENTI -->
+    <section id="sec-subs" class="section-view">
+      <div class="card" style="padding:14px 18px;">
+        <div class="card-header-flex" style="margin-bottom:0;">
+          <div class="card-title">💳 I Miei Abbonamenti</div>
+          <button class="btn btn-neutral btn-sm" onclick="switchTab('sec-add', document.querySelectorAll('.tab-btn')[2])">➕ Aggiungi</button>
+        </div>
+      </div>
+
+      <ul class="sub-list" id="subList"></ul>
+    </section>
+
+    <!-- SEZIONE 3: AGGIUNGI & PRESET -->
+    <section id="sec-add" class="section-view">
+      <div class="card">
+        <div class="card-title">⚡ Inserimento Rapido</div>
+        <p style="font-size:0.82rem; color:var(--subtext); margin-bottom:12px;">Scegli tra vasti esempi precompilati o compila manualmente qua sotto.</p>
+        <button class="btn btn-accent" onclick="openBottomSheet('examplesModal')">Sfolgia gli esempi</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Configurazione Abbonamento</div>
+        
+        <div class="form-group">
+          <label for="subName">Nome Servizio</label>
+          <input type="text" id="subName" placeholder="Apple Music, Netflix..." />
+        </div>
+
+        <div class="form-group">
+          <label for="subPlan">Piano / Variante</label>
+          <input type="text" id="subPlan" placeholder="Studente, Individuale..." />
+        </div>
+
+        <div class="form-group">
+          <label>Categoria</label>
+          <div class="custom-select-trigger" onclick="openBottomSheet('categoryModal')">
+            <span id="selectedCategoryText" style="display:flex; align-items:center; gap:10px;">Musica</span>
+            <span style="font-size:0.8rem; color:var(--subtext);">seleziona</span>
+          </div>
+          <input type="hidden" id="subCategory" value="Musica" />
+        </div>
+
+        <div class="form-group">
+          <label for="subCost">Costo</label>
+          <div style="display:flex; gap:8px;">
+            <input type="number" id="subCost" step="0.01" inputmode="decimal" placeholder="0.00" style="flex:2;" />
+            <select id="subCurrency" style="flex:1;">
+              <option value="EUR">€ EUR</option>
+              <option value="USD">$ USD</option>
+              <option value="GBP">£ GBP</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="subCycle">Frequenza</label>
+          <select id="subCycle">
+            <option value="weekly">Settimanale</option>
+            <option value="monthly" selected>Mensile</option>
+            <option value="yearly">Annuale</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="subBillingDay">Giorno di Scadenza (1-31)</label>
+          <input type="number" id="subBillingDay" min="1" max="31" placeholder="15" />
+        </div>
+
+        <div class="form-group">
+          <label for="subTag">Etichetta / Tag</label>
+          <input type="text" id="subTag" placeholder="Personale, Famiglia, Studio..." />
+        </div>
+
+        <div class="form-group" style="display:flex; align-items:center; gap:10px; margin-top:8px;">
+          <input type="checkbox" id="subIsTrial" style="width:20px; height:20px;" />
+          <label for="subIsTrial" style="margin-bottom:0; color:var(--text); font-weight:600; cursor:pointer;">Periodo di prova gratuita</label>
+        </div>
+
+        <div class="form-group" id="trialDaysGroup" style="display:none; margin-top:8px;">
+          <label for="subTrialDays">Giorni rimanenti alla prova</label>
+          <input type="number" id="subTrialDays" min="1" max="90" value="7" />
+        </div>
+
+        <div class="btn-group">
+          <button class="btn btn-income" onclick="saveSubscription()">Salva Abbonamento</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- SEZIONE 4: ANALISI -->
+    <section id="sec-analytics" class="section-view">
+      <div class="card">
+        <div class="card-title">💰  Taglia & Risparmia</div>
+        <p style="font-size:0.85rem; color:var(--subtext); line-height:1.4; margin-top:4px;" id="savingsSimulatorText">
+          Calcolo potenziale in corso...
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📊 Ripartizione Spese/Categorie</div>
+        <div class="chart-container">
+          <canvas id="subChart"></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🔔 Notifiche di scadenza</div>
+        <p style="font-size:0.85rem; color:var(--subtext); line-height:1.4; margin-top:6px;">
+          Attiva i promemoria locali per monitorare ogni scadenza.
+        </p>
+        <button class="btn btn-accent" style="margin-top: 12px;" onclick="requestNotificationPermission()">Abilita Notifiche</button>
+      </div>
+    </section>
+
+    <!-- SEZIONE 5: OPZIONI -->
+    <section id="sec-settings" class="section-view">
+      <div class="card">
+        <div class="card-title">Personalizzazione Tema</div>
+        <div class="color-picker-grid">
+          <div class="color-dot active" style="background:#4F46E5;" onclick="setTheme('theme-indigo', this)"></div>
+          <div class="color-dot" style="background:#059669;" onclick="setTheme('theme-emerald', this)"></div>
+          <div class="color-dot" style="background:#7C3AED;" onclick="setTheme('theme-purple', this)"></div>
+          <div class="color-dot" style="background:#E11D48;" onclick="setTheme('theme-rose', this)"></div>
+          <div class="color-dot" style="background:#EA580C;" onclick="setTheme('theme-orange', this)"></div>
+          <div class="color-dot" style="background:#0891B2;" onclick="setTheme('theme-cyan', this)"></div>
+  	  
+        </div>
+        <hr style="border:0; border-top:1px solid var(--border); margin: 16px 0;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-weight:600; font-size:0.9rem;">Tema Scuro</span>
+          <button class="btn btn-neutral btn-sm" onclick="toggleDarkMode()">Attiva/Disattiva</button>
+        </div>
+      </div>
+
+      <div class="card" style="display: flex; flex-direction: column; gap: 12px;">
+        <div class="card-title">Architettura Zero-Server</div>
+        <button class="btn btn-neutral" onclick="exportData()">📥 Esporta Backup (JSON)</button>
+        <label class="btn btn-neutral" style="margin-bottom:0; text-align:center;">
+          📤 Importa Backup
+          <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+        </label>
+        <hr style="border:0; border-top:1px solid var(--border); margin: 4px 0;">
+        <button class="btn btn-danger" onclick="clearAllData()">🗑️ Cancella Tutti i Dati</button>
+      </div>
+    </section>
+
+  </div>
+
+  <nav class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('sec-calendar', this)">
+      <span class="tab-icon">📅</span>
+      <span>Calendario</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab('sec-subs', this)">
+      <span class="tab-icon">💳</span>
+      <span>i miei<br> Abbonamenti</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab('sec-add', this)">
+      <span class="tab-icon">⚡</span>
+      <span>Nuovo</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab('sec-analytics', this)">
+      <span class="tab-icon">📊</span>
+      <span>Analisi</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab('sec-settings', this)">
+      <span class="tab-icon">⚙️</span>
+      <span>Opzioni</span>
+    </button>
+  </nav>
+
+</div>
+
+<div class="bottom-sheet-backdrop" id="examplesModal" onclick="closeBottomSheetOnBackdrop(event, 'examplesModal')">
+  <div class="bottom-sheet">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <div class="card-title">Scegli un Esempio</div>
+      <button class="btn-delete" onclick="closeBottomSheet('examplesModal')">✕</button>
+    </div>
+    <div class="form-group" style="margin-bottom:0;">
+      <input type="text" id="searchExampleInput" placeholder="Ricerca rapida" oninput="filterExamples()" />
+    </div>
+    <div class="sheet-examples-list" id="sheetExamplesContainer"></div>
+  </div>
+</div>
+
+<div class="bottom-sheet-backdrop" id="categoryModal" onclick="closeBottomSheetOnBackdrop(event, 'categoryModal')">
+  <div class="bottom-sheet" style="height: auto; max-height: 70vh;">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <div class="card-title">Scegli Categoria</div>
+      <button class="btn-delete" onclick="closeBottomSheet('categoryModal')">✕</button>
+    </div>
+    <div class="sheet-examples-list" id="sheetCategoriesContainer"></div>
+  </div>
+</div>
+
+<!-- Modal Dettaglio Giorno Calendario -->
+<div class="bottom-sheet-backdrop" id="dayDetailModal" onclick="closeBottomSheetOnBackdrop(event, 'dayDetailModal')">
+  <div class="bottom-sheet" style="height: auto; max-height: 60vh;">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <div class="card-title" id="dayModalTitle">Scadenze Giorno</div>
+      <button class="btn-delete" onclick="closeBottomSheet('dayDetailModal')">✕</button>
+    </div>
+    <div class="sheet-examples-list" id="dayModalContent" style="margin-top: 10px;"></div>
+  </div>
+</div>
+
+<script>
+  let db;
+  let myChart = null;
+  let subList = [];
+  let currentTheme = 'theme-indigo';
+  let isDark = false;
+
+  const SVGS = {
+    music: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>',
+    video: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="15" rx="2" ry="2"></rect><polyline points="17 2 12 7 7 2"></polyline></svg>',
+    cloud: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path></svg>',
+    ai: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/><path d="M12 6v6l4 2"/></svg>',
+    gaming: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="12" x2="18" y2="12"></line><line x1="12" y1="6" x2="12" y2="18"></line></svg>',
+    shipping: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>',
+    book: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>',
+    star: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>'
+  };
+
+  const CATEGORIES = [
+    { name: 'Musica', icon: 'music', color: '#FA243C' },
+    { name: 'Video & TV', icon: 'video', color: '#E50914' },
+    { name: 'Cloud & Produttività', icon: 'cloud', color: '#007AFF' },
+    { name: 'Gaming', icon: 'gaming', color: '#107C10' },
+    { name: 'Intelligenza Artificiale', icon: 'ai', color: '#10A37F' },
+    { name: 'Spedizioni & Shopping', icon: 'shipping', color: '#FF9900' },
+    { name: 'Studio & Lettura', icon: 'book', color: '#58CC02' },
+    { name: 'Altro', icon: 'star', color: '#DC2626' }
+  ];
+
+  const EXAMPLES_30 = [
+    { name: 'Apple Music', plan: 'Individuale', cost: 10.99, cycle: 'monthly', category: 'Musica', icon: 'music', color: '#FA243C' },
+    { name: 'Spotify Individual', plan: 'Individual', cost: 10.99, cycle: 'monthly', category: 'Musica', icon: 'music', color: '#1DB954' },
+    { name: 'Netflix Standard', plan: 'Standard', cost: 12.99, cycle: 'monthly', category: 'Video & TV', icon: 'video', color: '#E50914' },
+    { name: 'Amazon Prime', plan: 'Mensile', cost: 4.99, cycle: 'monthly', category: 'Spedizioni & Shopping', icon: 'shipping', color: '#FF9900' },
+    { name: 'Disney+ Standard', plan: 'Standard', cost: 8.99, cycle: 'monthly', category: 'Video & TV', icon: 'video', color: '#113CCF' },
+    { name: 'YouTube Premium', plan: 'Individuale', cost: 11.99, cycle: 'monthly', category: 'Video & TV', icon: 'video', color: '#FF0000' },
+    { name: 'iCloud+ 50GB', plan: '50 GB', cost: 0.99, cycle: 'monthly', category: 'Cloud & Produttività', icon: 'cloud', color: '#007AFF' },
+    { name: 'ChatGPT Plus', plan: 'Plus', cost: 20.00, cycle: 'monthly', category: 'Intelligenza Artificiale', icon: 'ai', color: '#10A37F' },
+    { name: 'Claude Pro', plan: 'Pro', cost: 18.00, cycle: 'monthly', category: 'Intelligenza Artificiale', icon: 'ai', color: '#D97706' },
+    { name: 'Xbox Game Pass', plan: 'Ultimate', cost: 14.99, cycle: 'monthly', category: 'Gaming', icon: 'gaming', color: '#107C10' },
+    { name: 'PlayStation Plus', plan: 'Essential', cost: 8.99, cycle: 'monthly', category: 'Gaming', icon: 'gaming', color: '#003087' },
+    { name: 'Nintendo Switch Online', plan: 'Individuale', cost: 3.99, cycle: 'monthly', category: 'Gaming', icon: 'gaming', color: '#E60012' },
+    { name: 'DAZN Standard', plan: 'Standard', cost: 34.99, cycle: 'monthly', category: 'Video & TV', icon: 'video', color: '#000000' },
+    { name: 'Midjourney', plan: 'Basic', cost: 10.00, cycle: 'monthly', category: 'Intelligenza Artificiale', icon: 'ai', color: '#5865F2' },
+    { name: 'GitHub Copilot', plan: 'Developer', cost: 9.00, cycle: 'monthly', category: 'Cloud & Produttività', icon: 'cloud', color: '#24292E' },
+    { name: 'Duolingo Plus', plan: 'Super', cost: 6.99, cycle: 'monthly', category: 'Studio & Lettura', icon: 'book', color: '#58CC02' },
+    { name: 'Notion Plus', plan: 'Plus', cost: 8.00, cycle: 'monthly', category: 'Cloud & Produttività', icon: 'cloud', color: '#000000' },
+    { name: 'Google One 100GB', plan: '100 GB', cost: 1.99, cycle: 'monthly', category: 'Cloud & Produttività', icon: 'cloud', color: '#4285F4' },
+    { name: 'Microsoft 365', plan: 'Personal', cost: 7.00, cycle: 'monthly', category: 'Cloud & Produttività', icon: 'cloud', color: '#D83B01' },
+    { name: 'Audible', plan: 'Abbonamento', cost: 9.99, cycle: 'monthly', category: 'Studio & Lettura', icon: 'book', color: '#FF9900' },
+    { name: 'NordVPN', plan: 'Biennale', cost: 3.99, cycle: 'monthly', category: 'Cloud & Produttività', icon: 'cloud', color: '#4682B4' },
+    { name: 'Piscina/Palestra', plan: 'Mensile', cost: 45.00, cycle: 'monthly', category: 'Altro', icon: 'star', color: '#DC2626' }
+  ];
+
+  const request = indexedDB.open("CadenceDB_v1", 1);
+
+  request.onupgradeneeded = (e) => {
+    db = e.target.result;
+    if (!db.objectStoreNames.contains("subscriptions")) {
+      db.createObjectStore("subscriptions", { keyPath: "id", autoIncrement: true });
+    }
+    if (!db.objectStoreNames.contains("settings")) {
+      db.createObjectStore("settings", { keyPath: "key" });
+    }
+  };
+
+  request.onsuccess = (e) => {
+    db = e.target.result;
+    loadSettings();
+    loadSubscriptions();
+    renderExamplesList(EXAMPLES_30);
+    renderCategoriesList();
+    updateCategoryDisplay('Musica', 'music', '#FA243C');
+  };
+
+  document.getElementById('subIsTrial').addEventListener('change', function() {
+    document.getElementById('trialDaysGroup').style.display = this.checked ? 'block' : 'none';
+  });
+
+  function switchTab(sectionId, btn) {
+    document.querySelectorAll('.section-view').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(sectionId).classList.add('active');
+    btn.classList.add('active');
+    if (sectionId === 'sec-analytics') updateAnalytics();
+    if (sectionId === 'sec-calendar') renderPixelCalendar();
+  }
+
+  function openBottomSheet(modalId) {
+    document.getElementById(modalId).classList.add("active");
+    if(modalId === 'examplesModal') {
+      document.getElementById("searchExampleInput").value = "";
+      renderExamplesList(EXAMPLES_30);
+    }
+  }
+
+  function closeBottomSheet(modalId) {
+    document.getElementById(modalId).classList.remove("active");
+  }
+
+  function closeBottomSheetOnBackdrop(event, modalId) {
+    if (event.target.id === modalId) {
+      closeBottomSheet(modalId);
+    }
+  }
+
+  function getSvgIcon(iconName, color) {
+    const rawSvg = SVGS[iconName] || SVGS['star'];
+    return `<div class="svg-icon-container" style="background-color: ${color || '#4F46E5'}; color: #FFFFFF;">${rawSvg}</div>`;
+  }
+
+  function renderCategoriesList() {
+    const container = document.getElementById("sheetCategoriesContainer");
+    container.innerHTML = "";
+    CATEGORIES.forEach(cat => {
+      const row = document.createElement("div");
+      row.className = "example-row";
+      row.innerHTML = `
+        <div style="display:flex; align-items:center; gap:12px;">
+          ${getSvgIcon(cat.icon, cat.color)}
+          <strong>${cat.name}</strong>
+        </div>
+      `;
+      row.onclick = () => {
+        updateCategoryDisplay(cat.name, cat.icon, cat.color);
+        closeBottomSheet('categoryModal');
+      };
+      container.appendChild(row);
+    });
+  }
+
+  function updateCategoryDisplay(name, icon, color) {
+    document.getElementById("subCategory").value = name;
+    document.getElementById("selectedCategoryText").innerHTML = `${getSvgIcon(icon, color)} <span>${name}</span>`;
+  }
+
+  function renderExamplesList(list) {
+    const container = document.getElementById("sheetExamplesContainer");
+    container.innerHTML = "";
+    list.forEach(ex => {
+      const row = document.createElement("div");
+      row.className = "example-row";
+      row.innerHTML = `
+        <div style="display:flex; align-items:center; gap:12px;">
+          ${getSvgIcon(ex.icon, ex.color)}
+          <div>
+            <strong>${escapeHtml(ex.name)}</strong>
+            <small style="color:var(--subtext);">${ex.plan} • ${ex.category}</small>
+          </div>
+        </div>
+        <div style="font-weight:700; color:var(--primary);">
+          ${ex.cost.toFixed(2)} €
+        </div>
+      `;
+      row.onclick = () => {
+        selectExample(ex);
+        closeBottomSheet('examplesModal');
+      };
+      container.appendChild(row);
+    });
+  }
+
+  function filterExamples() {
+    const query = document.getElementById("searchExampleInput").value.toLowerCase();
+    const filtered = EXAMPLES_30.filter(ex => 
+      ex.name.toLowerCase().includes(query) || 
+      ex.category.toLowerCase().includes(query) ||
+      ex.plan.toLowerCase().includes(query)
+    );
+    renderExamplesList(filtered);
+  }
+
+  function selectExample(ex) {
+    document.getElementById("subName").value = ex.name;
+    document.getElementById("subPlan").value = ex.plan;
+    updateCategoryDisplay(ex.category, ex.icon, ex.color);
+    document.getElementById("subCost").value = ex.cost;
+    document.getElementById("subCycle").value = ex.cycle;
+    document.getElementById("subBillingDay").value = new Date().getDate();
+    window.scrollTo({ top: document.getElementById("subName").offsetTop - 100, behavior: 'smooth' });
+  }
+
+  function saveSubscription() {
+    const name = document.getElementById("subName").value.trim();
+    const plan = document.getElementById("subPlan").value.trim();
+    const category = document.getElementById("subCategory").value;
+    let cost = parseFloat(document.getElementById("subCost").value);
+    const currency = document.getElementById("subCurrency").value;
+    const cycle = document.getElementById("subCycle").value;
+    const billingDay = parseInt(document.getElementById("subBillingDay").value) || 1;
+    const tag = document.getElementById("subTag").value.trim();
+    const isTrial = document.getElementById("subIsTrial").checked;
+    const trialDays = parseInt(document.getElementById("subTrialDays").value) || 7;
+
+    if (!name || isNaN(cost) || cost <= 0) {
+      alert("Inserisci un nome e un costo valido!");
+      return;
+    }
+
+    if (currency === 'USD') cost *= 0.92;
+    if (currency === 'GBP') cost *= 1.18;
+
+    const matchedCat = CATEGORIES.find(c => c.name === category) || { icon: 'star', color: '#4F46E5' };
+
+    const newSub = {
+      name,
+      plan: plan || 'Standard',
+      category,
+      cost,
+      cycle,
+      billingDay,
+      tag: tag || 'Generale',
+      isTrial,
+      trialDays: isTrial ? trialDays : 0,
+      color: matchedCat.color,
+      icon: matchedCat.icon
+    };
+
+    const tx = db.transaction("subscriptions", "readwrite");
+    tx.objectStore("subscriptions").add(newSub);
+
+    tx.oncomplete = () => {
+      document.getElementById("subName").value = "";
+      document.getElementById("subPlan").value = "";
+      document.getElementById("subCost").value = "";
+      document.getElementById("subTag").value = "";
+      document.getElementById("subIsTrial").checked = false;
+      document.getElementById("trialDaysGroup").style.display = 'none';
+      loadSubscriptions();
+      switchTab('sec-calendar', document.querySelectorAll('.tab-btn')[0]);
+    };
+  }
+
+  function loadSubscriptions() {
+    if (!db) return;
+    const tx = db.transaction("subscriptions", "readonly");
+    tx.objectStore("subscriptions").getAll().onsuccess = (e) => {
+      subList = e.target.result || [];
+      renderSubList();
+      calculateTotals();
+      renderPixelCalendar();
+    };
+  }
+
+  function renderPixelCalendar() {
+    const container = document.getElementById("calendarGridContainer");
+    if(!container) return;
+    container.innerHTML = "";
+    
+    for(let d=1; d<=31; d++) {
+      const subsOnDay = subList.filter(s => s.billingDay === d);
+      const cell = document.createElement("div");
+      cell.className = "cal-day-cell";
+      
+      let dotsHtml = '';
+      subsOnDay.forEach(sub => {
+        dotsHtml += `<span class="pixel-dot" style="background-color: ${sub.color};" title="${escapeHtml(sub.name)}"></span>`;
+      });
+
+      cell.innerHTML = `
+        <div class="cal-day-num">${d}</div>
+        <div class="cal-pixel-dots">${dotsHtml}</div>
+      `;
+
+      cell.onclick = () => showDayDetails(d, subsOnDay);
+
+      container.appendChild(cell);
+    }
+  }
+
+  function showDayDetails(dayNum, subs) {
+    document.getElementById("dayModalTitle").textContent = `Giorno ${dayNum} del Mese`;
+    const content = document.getElementById("dayModalContent");
+    content.innerHTML = "";
+
+    if (subs.length === 0) {
+      content.innerHTML = `<div class="empty-state">Nessun rinnovo programmato per questo giorno.</div>`;
+    } else {
+      subs.forEach(item => {
+        let cycleText = item.cycle === 'yearly' ? 'anno' : (item.cycle === 'weekly' ? 'settimana' : 'mese');
+        const row = document.createElement("div");
+        row.className = "example-row";
+        row.innerHTML = `
+          <div style="display:flex; align-items:center; gap:12px;">
+            ${getSvgIcon(item.icon, item.color)}
+            <div>
+              <strong>${escapeHtml(item.name)}</strong>
+              <small style="color:var(--subtext);">${escapeHtml(item.plan)} • ${escapeHtml(item.category)}</small>
+            </div>
+          </div>
+          <div style="font-weight:700; color:var(--primary); text-align:right;">
+            ${item.cost.toFixed(2)} €<br><small style="font-size:0.7rem; color:var(--subtext);">/${cycleText}</small>
+          </div>
+        `;
+        content.appendChild(row);
+      });
+    }
+    openBottomSheet('dayDetailModal');
+  }
+
+  function renderSubList() {
+    const listEl = document.getElementById("subList");
+    listEl.innerHTML = "";
+    if (subList.length === 0) {
+      listEl.innerHTML = `<li class="empty-state">Nessun abbonamento attivo!<br>Tocca "Preset" per iniziare.</li>`;
+      return;
+    }
+
+    subList.forEach(item => {
+      const li = document.createElement("li");
+      li.className = "sub-item";
+      let cycleText = 'mese';
+      if (item.cycle === 'yearly') cycleText = 'anno';
+      if (item.cycle === 'weekly') cycleText = 'settimana';
+
+      let trialHtml = item.isTrial ? `<span class="badge-trial">PROVA: ${item.trialDays}G</span>` : '';
+      let tagHtml = item.tag ? `<span class="badge-tag">${escapeHtml(item.tag)}</span>` : '';
+
+      li.innerHTML = `
+        <div class="sub-info">
+          ${getSvgIcon(item.icon, item.color)}
+          <div class="sub-details">
+            <strong>${escapeHtml(item.name)} ${trialHtml} ${tagHtml}</strong>
+            <small>${escapeHtml(item.plan)} • Rinnovo il ${item.billingDay}</small>
+          </div>
+        </div>
+        <div class="sub-actions">
+          <span class="sub-amount">${item.cost.toFixed(2)} €<small style="font-size:0.7rem; color:var(--subtext);">/${cycleText}</small></span>
+          <button class="btn-delete" onclick="deleteSubscription(${item.id}, '${escapeHtml(item.name)}')">🗑️</button>
+        </div>
+      `;
+      listEl.appendChild(li);
+    });
+  }
+
+  function deleteSubscription(id, name) {
+    if (confirm(`Eliminare "${name}"?`)) {
+      const tx = db.transaction("subscriptions", "readwrite");
+      tx.objectStore("subscriptions").delete(id);
+      tx.oncomplete = () => loadSubscriptions();
+    }
+  }
+
+  function calculateTotals() {
+    let monthlyTotal = 0;
+    subList.forEach(item => {
+      if (item.cycle === 'yearly') monthlyTotal += (item.cost / 12);
+      else if (item.cycle === 'weekly') monthlyTotal += (item.cost * 4.33);
+      else monthlyTotal += item.cost;
+    });
+
+    document.getElementById("totalMonthly").textContent = `${monthlyTotal.toFixed(2).replace('.', ',')} € /mese`;
+    document.getElementById("totalYearly").textContent = `Spesa annua stimata: ${(monthlyTotal * 12).toFixed(2).replace('.', ',')} €`;
+
+    const savings = monthlyTotal * 0.3 * 12;
+    document.getElementById("savingsSimulatorText").innerHTML = `
+      Ottimizzando i tuoi ${subList.length} abbonamenti attivi, potresti risparmiare fino a <strong style="color:var(--income);">${savings.toFixed(2)} € all'anno</strong> da reinvestire nei tuoi progetti!
+    `;
+  }
+
+  function updateAnalytics() {
+    const ctx = document.getElementById('subChart').getContext('2d');
+    const catTotals = {};
+    subList.forEach(item => {
+      let mCost = item.cost;
+      if (item.cycle === 'yearly') mCost = item.cost / 12;
+      if (item.cycle === 'weekly') mCost = item.cost * 4.33;
+      catTotals[item.category] = (catTotals[item.category] || 0) + mCost;
+    });
+
+    const labels = Object.keys(catTotals);
+    const dataValues = Object.values(catTotals);
+
+    if (myChart) myChart.destroy();
+    if (labels.length === 0) {
+      myChart = new Chart(ctx, { type: 'doughnut', data: { labels: ['Nessun dato'], datasets: [{ data: [1], backgroundColor: ['#E5E7EB'] }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } });
+      return;
+    }
+
+    myChart = new Chart(ctx, {
+      type: 'doughnut',
+      data: { labels: labels, datasets: [{ data: dataValues, backgroundColor: ['#4F46E5', '#EF4444', '#10B981', '#F59E0B', '#EC4899', '#8B5CF6'], borderWidth: 2, borderColor: '#ffffff' }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { family: 'Fredoka', size: 11 } } } } }
+    });
+  }
+
+  function requestNotificationPermission() {
+    if (!("Notification" in window)) {
+      alert("Notifiche non supportate dal browser.");
+      return;
+    }
+    Notification.requestPermission().then(permission => {
+      if (permission === "granted") alert("Notifiche abilitate con successo!");
+    });
+  }
+
+  function setTheme(themeName, el) {
+    document.body.className = themeName + (isDark ? ' theme-dark' : '');
+    currentTheme = themeName;
+    if (el) {
+      document.querySelectorAll('.color-dot').forEach(d => d.classList.remove('active'));
+      el.classList.add('active');
+    }
+    saveSettings();
+  }
+
+  function toggleDarkMode() {
+    isDark = !isDark;
+    document.body.className = currentTheme + (isDark ? ' theme-dark' : '');
+    saveSettings();
+  }
+
+  function saveSettings() {
+    if (!db) return;
+    db.transaction("settings", "readwrite").objectStore("settings").put({ key: "theme", value: { currentTheme, isDark } });
+  }
+
+  function loadSettings() {
+    db.transaction("settings", "readonly").objectStore("settings").get("theme").onsuccess = (e) => {
+      if (e.target.result && e.target.result.value) {
+        currentTheme = e.target.result.value.currentTheme || 'theme-indigo';
+        isDark = !!e.target.result.value.isDark;
+        document.body.className = currentTheme + (isDark ? ' theme-dark' : '');
+      }
+    };
+  }
+
+  function exportData() {
+    db.transaction("subscriptions", "readonly").objectStore("subscriptions").getAll().onsuccess = (e) => {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(e.target.result));
+      const anchor = document.createElement('a');
+      anchor.setAttribute("href", dataStr);
+      anchor.setAttribute("download", `cadence_backup.json`);
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+    };
+  }
+
+  function importData(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const imported = JSON.parse(e.target.result);
+        const tx = db.transaction("subscriptions", "readwrite");
+        const store = tx.objectStore("subscriptions");
+        store.clear();
+        imported.forEach(item => { delete item.id; store.add(item); });
+        tx.oncomplete = () => { loadSubscriptions(); alert("Ripristinato!"); };
+      } catch (err) { alert("File non valido"); }
+    };
+    reader.readAsText(file);
+  }
+
+  function clearAllData() {
+    if (confirm("Azzerare tutto?")) {
+      db.transaction("subscriptions", "readwrite").objectStore("subscriptions").clear().onsuccess = () => loadSubscriptions();
+    }
+  }
+
+  function escapeHtml(text) {
+    return text.replace(/[&<"']/g, m => ({ '&':'&amp;', '<':'&lt;', '"':'&quot;', "'":'&#039;' }[m]));
+  }
+</script>
+</body>
+</html>
